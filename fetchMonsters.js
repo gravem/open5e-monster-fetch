@@ -29,7 +29,8 @@ function logLastFetchedPage(page) {
 // Main function to fetch monsters
 async function fetchMonsters(startPage = 1) {
   let monsters = [];
-  let url = `${BASE_URL}?page=${startPage}`;
+  let currentPage = startPage; // Start from the last fetched page
+  let url = `${BASE_URL}?page=${currentPage}`;
   const initialDelay = 1000; // Initial delay of 1 second (1000 milliseconds)
   let delay = initialDelay;
   const maxRetries = 5;
@@ -52,25 +53,30 @@ async function fetchMonsters(startPage = 1) {
         const data = response.data;
 
         // Extract necessary fields and append to the monsters array
+        const newMonsters = data.results.map((monster) => ({
+          name: monster.name,
+          challenge_rating: monster.challenge_rating,
+          source: monster.document__slug,
+          slug: monster.slug,
+        }));
+
+        //Append only unique monsters
         monsters = monsters.concat(
-          data.results.map((monster) => ({
-            name: monster.name,
-            challenge_rating: monster.challenge_rating,
-            source: monster.document__slug,
-            slug: monster.slug,
-          }))
+          newMonsters.filter(
+            (monster) => !monsters.find((m) => m.slug === monster.slug)
+          )
         );
 
         url = data.next; // Update the URL to the next page, or null if done
+
         retries = 0; // Reset retries after a successful request
         delay = initialDelay; // Reset delay after a successful request
 
-        // Log the last fetched page number
-        const lastFetchedPage = new URL(url).searchParams.get('page') - 1;
-        logLastFetchedPage(lastFetchedPage);
-
-        // Delay before making the next request
         if (url) {
+          currentPage++; // Increment the page counter
+          logLastFetchedPage(currentPage); // Log the last fetched page number
+
+          // Delay before making the next request
           console.log(
             `Waiting for ${delay} milliseconds before the next request...`
           );
